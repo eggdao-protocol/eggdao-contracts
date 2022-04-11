@@ -41,6 +41,7 @@ contract Egg is ERC20, Ownable {
 
     uint256 public maxUsdtValuePerTransactionLimit = 1000 * 10**18;
     uint256 public maxBalancePerAddressLimit = 500_0000 * 10**18;
+    uint256 public maxMebWorthPerAddressLimit = 2000 * 10**18;
 
     bool public onlyWhiteListSwitch;
     mapping(address => bool) whitelist;
@@ -88,6 +89,7 @@ contract Egg is ERC20, Ownable {
         if (freeFeeAccounts[from] || freeFeeAccounts[to]) {
             super._transfer(from, to, amount);
         } else if (pairAddressSet.contains(from)) {
+            require(!onlyWhiteListSwitch || (this.balanceOf(to).add(amount)).mul(getEggToMebPrice()).div(1e18) <= maxMebWorthPerAddressLimit, "The limit of max meb worth is exceeded");
             require(amount.mul(getEggToMebPrice()).div(1e18).mul(getMebToUsdtPrice()).div(1e18) < maxUsdtValuePerTransactionLimit, "The limit of a single transaction is exceeded");
             super._transfer(from, to, amount);
             uint256 exchangeBuyFee = amount.mul(exchangeBuyRate).div(100);
@@ -142,6 +144,12 @@ contract Egg is ERC20, Ownable {
     function setWhiteList(address _address, bool _bool) public onlyOwner {
         whitelist[_address] = _bool;
     }
+    
+    function setWhiteListBatch(address[] calldata _address, bool _bool) public onlyOwner {
+        for (uint256 i = 0; i < _address.length; i++) {
+            whitelist[_address[i]] = _bool;
+        }
+    }
 
     function addPairAddress(address _pairAddress) public onlyOwner {
         pairAddressSet.add(_pairAddress);
@@ -161,6 +169,10 @@ contract Egg is ERC20, Ownable {
 
     function setMaxAmountPerAddressLimit(uint256 _amount) public onlyOwner {
         maxBalancePerAddressLimit = _amount;
+    }
+    
+    function setMaxMebWorthPerAddressLimit(uint256 _amount) public onlyOwner {
+        maxMebWorthPerAddressLimit = _amount;
     }
 
     function seEggBrokerAddress(address _address) public onlyOwner {
